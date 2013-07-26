@@ -125,7 +125,7 @@ fun! ZptIndentGet(lnum, use_syntax_check)
     " special indentation for xml attribute contents (xmlString)
     " TODO maybe we should only use this for tal: and metal: tags, is there a way to do that?
     let syn1 = synIDattr(synID(a:lnum, 1, 1), 'name')
-    let syn2 = synIDattr(synID(lnum, strlen(getline(lnum)) - 1, 1), 'name')
+    let syn2 = synIDattr(synID(lnum, strlen(getline(lnum)), 1), 'name')
     if syn1 =~ '^xmlString' || (syn1 == '' && syn2 =~ '^xmlString')
         let [l, c] = <SID>GetLastZptStringStart(a:lnum)
         return c + 1
