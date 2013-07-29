@@ -71,36 +71,40 @@ endfun
 
 " [-- return a list [lnum, colnum] of the nearest xmlString start --]
 fun! <SID>GetLastZptStringStart(lnum)
-    let pattern = ('["' . "']")
-    let slnum = prevnonblank(a:lnum - 1)
+    " go backwards searching for the multiline xmlString containing the
+    " line in question
+    let cur = a:lnum
+    let ln = 0
+    let col = 0
+    let i = 0
+    while cur > 0 && (ln == 0 || col == 0)
+        " search for the nearest xmlString block start
+        let [ln, col] = searchpos('\("[^"]*\n\([^"]\|\n\)*"\|' . "'[^']*\\n\\([^']\\|\\n\\)*\\)", 'nW')
 
-    while slnum > 0
-        let line = getline(slnum)
+        " we must ignore any matches past the given line
+        if ln > a:lnum
+            let ln = 0
+            let col = 0
+        endif
 
-        " search the last quote char in the line
-        let i = 0
-        let m = match(line, pattern, i)
-        let pos = -1
-        while m >= 0
-            let pos = m
+        " we must ignore any matches that are inside a xmlString
+        if ln
             let i = i + 1
-            let m = match(line, pattern, i)
-        endwhile
+        endif
+        if ln && col && synIDattr(synID(ln, col-1, 1), 'name') =~ '^xmlString'
+            let ln = 0
+            let col = 0
+        endif
 
-        " go backwards, searching for the start of the last
-        " xmlString in the given line
-        while pos >= 0
-            let syn1 = synIDattr(synID(slnum, pos, 1), 'name')
-            if syn1 !~ '^xmlString'
-                return [slnum, pos]
-                break
-            endif
-            let i = i - 1
-            let pos = match(line, pattern, i)
-        endwhile
+        " go backwards in the document
+        let cur = cur - 1
+        call cursor(cur, 1)
 
-        let slnum = prevnonblank(slnum - 1)
     endwhile
+
+    echo i
+
+    return [ln, col]
 endfun
 
 fun! ZptIndentGet(lnum, use_syntax_check)
@@ -112,7 +116,7 @@ fun! ZptIndentGet(lnum, use_syntax_check)
 	return 0
     endif
 
-    if a:use_syntax_check
+    if 0 "a:use_syntax_check
 	let check_lnum = <SID>ZptIndentSynCheck(lnum)
 	let check_alnum = <SID>ZptIndentSynCheck(a:lnum)
 	if 0 == check_lnum || 0 == check_alnum
@@ -125,19 +129,18 @@ fun! ZptIndentGet(lnum, use_syntax_check)
     " special indentation for xml attribute contents (xmlString)
     " TODO maybe we should only use this for tal: and metal: tags, is there a way to do that?
     let syn1 = synIDattr(synID(a:lnum, 1, 1), 'name')
-    let syn2 = synIDattr(synID(lnum, strlen(getline(lnum)), 1), 'name')
-    if syn1 =~ '^xmlString' || (syn1 == '' && syn2 =~ '^xmlString')
+    if syn1 =~ '^xmlString'
         let [l, c] = <SID>GetLastZptStringStart(a:lnum)
-        return c + 1
+        return c
     endif
 
     " avoid using xmlString blocks as basis for indentation of other
     " syntax regions
-    let syn2 = synIDattr(synID(lnum, 1, 1), 'name')
-    while syn2 =~ '^xmlString'
-        let lnum = prevnonblank(lnum - 1)
-        let syn2 = synIDattr(synID(lnum, 1, 1), 'name')
-    endwhile
+    "let syn2 = synIDattr(synID(lnum, 1, 1), 'name')
+    "while syn2 =~ '^xmlString'
+    "    let lnum = prevnonblank(lnum - 1)
+    "    let syn2 = synIDattr(synID(lnum, 1, 1), 'name')
+    "endwhile
 
     let ind = <SID>ZptIndentSum(lnum, -1, indent(lnum))
     let ind = <SID>ZptIndentSum(a:lnum, 0, ind)
