@@ -76,7 +76,6 @@ fun! <SID>GetLastZptStringStart(lnum)
     let cur = a:lnum
     let ln = 0
     let col = 0
-    let i = 0
     while cur > 0 && (ln == 0 || col == 0)
         " search for the nearest xmlString block start
         let [ln, col] = searchpos('\("[^"]*\n\([^"]\|\n\)*"\|' . "'[^']*\\n\\([^']\\|\\n\\)*\\)", 'nW')
@@ -88,9 +87,6 @@ fun! <SID>GetLastZptStringStart(lnum)
         endif
 
         " we must ignore any matches that are inside a xmlString
-        if ln
-            let i = i + 1
-        endif
         if ln && col && synIDattr(synID(ln, col-1, 1), 'name') =~ '^xmlString'
             let ln = 0
             let col = 0
@@ -101,8 +97,6 @@ fun! <SID>GetLastZptStringStart(lnum)
         call cursor(cur, 1)
 
     endwhile
-
-    echo i
 
     return [ln, col]
 endfun
@@ -136,11 +130,11 @@ fun! ZptIndentGet(lnum, use_syntax_check)
 
     " avoid using xmlString blocks as basis for indentation of other
     " syntax regions
-    "let syn2 = synIDattr(synID(lnum, 1, 1), 'name')
-    "while syn2 =~ '^xmlString'
-    "    let lnum = prevnonblank(lnum - 1)
-    "    let syn2 = synIDattr(synID(lnum, 1, 1), 'name')
-    "endwhile
+    let syn2 = synIDattr(synID(lnum, 1, 1), 'name')
+    while syn2 =~ '^xmlString'
+        let lnum = prevnonblank(lnum - 1)
+        let syn2 = synIDattr(synID(lnum, 1, 1), 'name')
+    endwhile
 
     let ind = <SID>ZptIndentSum(lnum, -1, indent(lnum))
     let ind = <SID>ZptIndentSum(a:lnum, 0, ind)
